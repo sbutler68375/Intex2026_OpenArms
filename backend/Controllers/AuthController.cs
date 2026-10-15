@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenArms.Api;
@@ -17,20 +15,6 @@ public class AuthController(
     IWebHostEnvironment env,
     IConfiguration configuration) : ControllerBase
 {
-    private static bool GoogleConfigured(IConfiguration cfg) =>
-        !string.IsNullOrWhiteSpace(cfg["Authentication:Google:ClientId"]) &&
-        !string.IsNullOrWhiteSpace(cfg["Authentication:Google:ClientSecret"]);
-
-    private static string? EmailFromExternalPrincipal(ClaimsPrincipal user)
-    {
-        foreach (var c in user.Claims)
-        {
-            if (c.Type is ClaimTypes.Email or "email" or "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")
-                return string.IsNullOrWhiteSpace(c.Value) ? null : c.Value.Trim();
-        }
-        return null;
-    }
-
     private void AppendAuthCookie(string token) =>
         Response.Cookies.Append(
             AuthSessionCookie.Name,
@@ -41,57 +25,6 @@ public class AuthController(
         Response.Cookies.Delete(
             AuthSessionCookie.Name,
             AuthSessionCookie.CreateDeleteOptions(configuration, env, Request));
-
-    /// <summary>Starts Google OAuth. Browser redirect only (not for fetch/XHR).</summary>
-    [HttpGet("login-google")]
-    [AllowAnonymous]
-    public IActionResult LoginGoogle()
-    {
-        if (!GoogleConfigured(configuration))
-            return BadRequest(new { message = "Google sign-in is not configured (missing ClientId/ClientSecret)." });
-
-        var props = new AuthenticationProperties
-        {
-            RedirectUri = "/api/auth/google-complete",
-        };
-        return Challenge(props, GoogleDefaults.AuthenticationScheme);
-    }
-
-    /// <summary>After Google redirects to /signin-google, middleware signs in with ExternalCookie, then redirects here.</summary>
-    [HttpGet("google-complete")]
-    [Authorize(AuthenticationSchemes = AuthSchemes.ExternalCookie)]
-    public async Task<IActionResult> GoogleComplete()
-    {
-        var frontend = (configuration["FrontendBaseUrl"] ?? "http://localhost:5173").TrimEnd('/');
-
-        var email = EmailFromExternalPrincipal(User);
-        if (string.IsNullOrEmpty(email))
-        {
-            await HttpContext.SignOutAsync(AuthSchemes.ExternalCookie);
-            return Redirect($"{frontend}/login?error=google_no_email");
-        }
-
-        var user = await db.GetOneAsync<User>("users", $"email=eq.{Esc(email)}&select=*");
-        if (user == null)
-        {
-            await HttpContext.SignOutAsync(AuthSchemes.ExternalCookie);
-            return Redirect($"{frontend}/login?error=google_no_account");
-        }
-
-        if (user.IsActive == false)
-        {
-            await HttpContext.SignOutAsync(AuthSchemes.ExternalCookie);
-            return Redirect($"{frontend}/login?error=google_inactive");
-        }
-
-        await HttpContext.SignOutAsync(AuthSchemes.ExternalCookie);
-
-        var token = auth.GenerateToken(user);
-        AppendAuthCookie(token);
-        var normalizedRole = (user.Role ?? "").Trim().ToLowerInvariant();
-        var target = normalizedRole == "donor" ? "/donor" : "/admin";
-        return Redirect($"{frontend}{target}");
-    }
 
     private static string Esc(string value) => Uri.EscapeDataString(value);
     private static string? NormalizeRegion(string? region)

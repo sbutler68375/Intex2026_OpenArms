@@ -8,8 +8,6 @@ const baseURL = normalizedApiUrl
   ? (normalizedApiUrl.endsWith('/api') ? normalizedApiUrl : `${normalizedApiUrl}/api`)
   : '/api'
 
-export const googleLoginUrl = `${baseURL}/auth/login-google`
-
 export const api = axios.create({
   baseURL,
   headers: { 'Content-Type': 'application/json' },

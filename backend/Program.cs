@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.CookiePolicy;
@@ -39,10 +37,6 @@ var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_SERVICE_ROLE_KEY"
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY")
     ?? builder.Configuration["Jwt:Key"]
     ?? "";
-
-var googleClientId = builder.Configuration["Authentication:Google:ClientId"];
-var googleClientSecret = builder.Configuration["Authentication:Google:ClientSecret"];
-var googleConfigured = !string.IsNullOrWhiteSpace(googleClientId) && !string.IsNullOrWhiteSpace(googleClientSecret);
 
 builder.Services.AddSingleton(new SupabaseService(supabaseUrl, supabaseKey));
 builder.Services.AddSingleton(new AuthService(jwtKey,
@@ -86,27 +80,7 @@ authenticationBuilder
                 return Task.CompletedTask;
             }
         };
-    })
-    .AddCookie(AuthSchemes.ExternalCookie, options =>
-    {
-        options.Cookie.Name = "OpenArms.OAuth";
-        options.Cookie.HttpOnly = true;
-        options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-        options.ExpireTimeSpan = TimeSpan.FromMinutes(10);
-        options.SlidingExpiration = false;
     });
-
-if (googleConfigured)
-{
-    authenticationBuilder.AddGoogle(GoogleDefaults.AuthenticationScheme, options =>
-    {
-        options.ClientId = googleClientId!;
-        options.ClientSecret = googleClientSecret!;
-        options.SignInScheme = AuthSchemes.ExternalCookie;
-        options.CallbackPath = "/signin-google";
-    });
-}
 
 builder.Services.AddAuthorization(options =>
 {
