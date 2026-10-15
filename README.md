@@ -14,12 +14,10 @@ All data in this project is fake sample data.
 
 ## Team
 
-| Name | GitHub |
-|---|---|
-| TODO | [jadesanford](https://github.com/jadesanford) |
-| TODO | [lukehoop](https://github.com/lukehoop) |
-| TODO | [natesaez](https://github.com/natesaez) |
-| TODO | [sbutler68375](https://github.com/sbutler68375) |
+- [jadesanford](https://github.com/jadesanford)
+- [lukehoop](https://github.com/lukehoop)
+- [natesaez](https://github.com/natesaez)
+- [sbutler68375](https://github.com/sbutler68375)
 
 ## Tech stack
 
